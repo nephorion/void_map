@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>void_map</title>
+  <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet">
+  <link rel="icon" href="/favicon.ico" type="image/svg+xml">
+  <script src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+  <script src="https://unpkg.com/react-is@18.2.0/umd/react-is.production.min.js"></script>
+  <script src="https://unpkg.com/redux@4.2.1/dist/redux.min.js"></script>
+  <script src="https://unpkg.com/react-redux@7.2.9/dist/react-redux.min.js"></script>
+  <script src="https://unpkg.com/styled-components@5.3.11/dist/styled-components.min.js"></script>
+  <script src="https://unpkg.com/kepler.gl@2.5.5/umd/keplergl.min.js"></script>
+  <style>
+    :root { color-scheme: dark; --bg: #05060a; --panel: rgba(9, 14, 25, .88); --line: #1dfff2; --pink: #ff2bd6; --amber: #ffc857; --muted: #8fa6ba; --text: #e9fbff; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; background: radial-gradient(circle at 20% 0%, #18224a 0, transparent 34%), linear-gradient(135deg, #05060a 0%, #101520 60%, #05060a 100%); color: var(--text); font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    button, input, select { font: inherit; }
+    button { border: 1px solid rgba(29,255,242,.45); color: var(--text); background: rgba(12,24,38,.86); padding: .65rem .85rem; border-radius: .7rem; cursor: pointer; }
+    button:hover:not(:disabled), button.active { border-color: var(--pink); box-shadow: 0 0 18px rgba(255,43,214,.25); }
+    button:disabled { cursor: not-allowed; opacity: .45; }
+    .shell { min-height: 100vh; display: flex; flex-direction: column; }
+    .picker { width: min(1080px, calc(100vw - 28px)); margin: 32px auto; padding: 24px; border: 1px solid rgba(29,255,242,.26); border-radius: 24px; background: var(--panel); box-shadow: 0 0 70px rgba(29,255,242,.08); }
+    .brand { display: flex; justify-content: space-between; gap: 16px; align-items: end; margin-bottom: 24px; }
+    h1 { margin: 0; font-size: clamp(2.2rem, 8vw, 5rem); line-height: .88; letter-spacing: -.08em; text-transform: lowercase; text-shadow: 0 0 26px rgba(29,255,242,.55); }
+    .tagline, .muted { color: var(--muted); }
+    .breadcrumb { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; padding: 12px; border: 1px solid rgba(143,166,186,.2); border-radius: 14px; background: rgba(0,0,0,.25); }
+    .breadcrumb button { padding: .35rem .55rem; }
+    .list { display: grid; gap: 10px; margin-top: 16px; }
+    .row { display: grid; grid-template-columns: auto 1fr auto; gap: 14px; align-items: center; width: 100%; padding: 14px 16px; border: 1px solid rgba(143,166,186,.18); border-radius: 16px; background: rgba(4,8,14,.68); text-align: left; }
+    .row:hover { border-color: var(--line); }
+    .icon { font-size: 1.5rem; filter: drop-shadow(0 0 12px rgba(29,255,242,.4)); }
+    .error { color: #ff8f8f; }
+    .warning { margin-top: 14px; padding: 14px; border: 1px solid rgba(255,200,87,.5); border-radius: 14px; color: #ffe9ae; background: rgba(255,200,87,.12); }
+    .map-layout { min-height: 100vh; display: grid; grid-template-rows: auto auto auto 1fr; }
+    .topbar, .controls, .replay { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 10px 14px; border-bottom: 1px solid rgba(29,255,242,.18); background: rgba(3,7,13,.92); backdrop-filter: blur(12px); }
+    .topbar strong { font-size: 1.35rem; letter-spacing: -.04em; color: var(--line); }
+    .spacer { flex: 1; }
+    .range { accent-color: var(--pink); min-width: 180px; }
+    .map-wrap { position: relative; min-height: 520px; }
+    #map { position: absolute; inset: 0; }
+    .maplibregl-popup-content { background: rgba(5, 6, 10, .96); color: var(--text); border: 1px solid rgba(29,255,242,.45); border-radius: 14px; box-shadow: 0 0 28px rgba(29,255,242,.22); padding: 12px 14px; }
+    .maplibregl-popup-content strong { color: var(--line); }
+    .maplibregl-popup-close-button { color: var(--text); font-size: 1.2rem; padding: 2px 8px; border: 0; background: transparent; box-shadow: none; }
+    .maplibregl-popup-tip { border-top-color: rgba(5, 6, 10, .96) !important; border-bottom-color: rgba(5, 6, 10, .96) !important; }
+    .overlay { position: absolute; left: 14px; bottom: 14px; max-width: min(520px, calc(100vw - 28px)); padding: 12px 14px; border-radius: 14px; background: rgba(5,6,10,.86); border: 1px solid rgba(29,255,242,.25); color: var(--muted); z-index: 3; }
+    .spinner { padding: 32px; text-align: center; color: var(--line); }
+    @media (max-width: 720px) { .brand, .row { grid-template-columns: 1fr; display: grid; } .row { gap: 8px; } .topbar, .controls, .replay { align-items: stretch; } button, select { flex: 1; } }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script>
+    const {useEffect, useRef, useState} = React;
+    const api = async (url, options = {}) => {
+      const res = await fetch(url, {headers: {'Content-Type': 'application/json'}, ...options});
+      if (res.status === 503) throw Object.assign(new Error('No file selected'), {code: 'no_file_selected'});
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Request failed');
+      return data;
+    };
+    const fmtTime = ts => ts ? new Date(ts * 1000).toLocaleTimeString() : '--:--:--';
+    const colorForSignal = signal => signal > -55 ? '#1dfff2' : signal > -72 ? '#ffc857' : '#ff2bd6';
+    const confidenceColor = c => c === 'high' ? '#2cff8d' : c === 'medium' ? '#ffc857' : '#ff4d6d';
+    const BASEMAPS = {
+      cartoDark: {
+        label: 'CARTO Dark',
+        style: rasterStyle('carto-dark', 'https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png', '© OpenStreetMap contributors © CARTO')
+      },
+      cartoLight: {
+        label: 'CARTO Light',
+        style: rasterStyle('carto-light', 'https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png', '© OpenStreetMap contributors © CARTO')
+      },
+      googleRoadmap: {
+        label: 'Google Roadmap',
+        style: rasterStyle('google-roadmap', 'https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', '© Google')
+      },
+      googleSatellite: {
+        label: 'Google Satellite',
+        style: rasterStyle('google-satellite', 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', '© Google')
+      }
+    };
+
+    function rasterStyle(id, tileUrl, attribution) {
+      return {
+        version: 8,
+        sources: {[id]: {type: 'raster', tiles: [tileUrl], tileSize: 256, attribution}},
+        layers: [{id, type: 'raster', source: id}]
+      };
+    }
+
+    function App() {
+      const [screen, setScreen] = useState('picker');
+      const [browse, setBrowse] = useState(null);
+      const [loading, setLoading] = useState(false);
+      const [error, setError] = useState('');
+      const [selecting, setSelecting] = useState('');
+      const [gpsWarning, setGpsWarning] = useState(null);
+      const [status, setStatus] = useState(null);
+      const [range, setRange] = useState(null);
+      const [from, setFrom] = useState(null);
+      const [to, setTo] = useState(null);
+      const [preset, setPreset] = useState('all');
+      const [datasets, setDatasets] = useState({packets: [], devices: [], triangulated: []});
+      const [layers, setLayers] = useState({packets: true, devices: true, triangulated: true});
+      const [basemap, setBasemap] = useState('cartoDark');
+      const [selectedTriMac, setSelectedTriMac] = useState(null);
+      const [mapRedrawTick, setMapRedrawTick] = useState(0);
+      const [playing, setPlaying] = useState(false);
+      const [speed, setSpeed] = useState(1);
+      const [mode, setMode] = useState('sliding');
+      const [windowSec, setWindowSec] = useState(300);
+      const [cursor, setCursor] = useState(null);
+      const mapRef = useRef(null);
+      const initialFitRef = useRef(false);
+
+      useEffect(() => { loadBrowse(); }, []);
+      useEffect(() => { if (screen === 'map') initialiseMap(); }, [screen]);
+      useEffect(() => {
+        const map = mapRef.current;
+        if (!map || !BASEMAPS[basemap]) return;
+        const requestRedraw = () => setMapRedrawTick(tick => tick + 1);
+        map.once('style.load', requestRedraw);
+        map.once('idle', requestRedraw);
+        map.setStyle(BASEMAPS[basemap].style);
+        const timeout = setTimeout(requestRedraw, 250);
+        return () => {
+          clearTimeout(timeout);
+          map.off('style.load', requestRedraw);
+          map.off('idle', requestRedraw);
+        };
+      }, [basemap]);
+      useEffect(() => { if (mapRef.current) renderMapData(); }, [datasets, layers, cursor, mode, windowSec, selectedTriMac, mapRedrawTick]);
+      useEffect(() => {
+        if (!playing || !range) return;
+        const timer = setInterval(() => {
+          setCursor(current => {
+            const next = Math.min((current || from || range.start_ts) + speed, to || range.end_ts);
+            if (next >= (to || range.end_ts)) setPlaying(false);
+            return next;
+          });
+        }, 1000);
+        return () => clearInterval(timer);
+      }, [playing, speed, range, from, to]);
+
+      async function loadBrowse(path) {
+        setLoading(true); setError('');
+        try { setBrowse(await api('/api/browse' + (path ? '?path=' + encodeURIComponent(path) : ''))); }
+        catch (err) { setError('Cannot read this directory'); }
+        finally { setLoading(false); }
+      }
+
+      async function chooseFile(path) {
+        setSelecting(path); setError(''); setGpsWarning(null);
+        try {
+          const data = await api('/api/select', {method: 'POST', body: JSON.stringify({path})});
+          if (!data.has_gps) setGpsWarning({path, message: 'This file has no GPS data. The map will load but no points will be visible.'});
+          else await openMap();
+        } catch (err) { setError(err.message); }
+        finally { setSelecting(''); }
+      }
+
+      async function openMap() {
+        setScreen('map'); setLoading(true); setError(''); initialFitRef.current = false;
+        try {
+          const s = await api('/api/status');
+          const r = await api('/api/timerange');
+          setStatus(s); setRange(r); setFrom(r.start_ts); setTo(r.end_ts); setCursor(r.start_ts);
+          await loadData(r.start_ts, r.end_ts, 'all');
+        } catch (err) { if (err.code === 'no_file_selected') setScreen('picker'); else setError(err.message); }
+        finally { setLoading(false); }
+      }
+
+      async function loadData(nextFrom = from, nextTo = to, nextPreset = preset) {
+        setLoading(true); setError('');
+        try {
+          const params = nextPreset && nextPreset !== 'all' ? '?preset=' + nextPreset : `?from=${nextFrom || ''}&to=${nextTo || ''}`;
+          const [packets, devices, triangulated] = await Promise.all([api('/api/packets' + params), api('/api/devices' + params), api('/api/triangulated' + params)]);
+          if (packets.length > 50000) setError(`Large dataset (${packets.length} packets) — replay may be slow. Consider selecting a shorter time range.`);
+          if (!packets.length) setError('No data found in the selected time range');
+          setDatasets({packets, devices, triangulated});
+          setCursor(nextFrom || (range && range.start_ts));
+        } catch (err) { if (err.code === 'no_file_selected') setScreen('picker'); else setError(err.message || 'Cannot connect to backend — is run.sh running?'); }
+        finally { setLoading(false); }
+      }
+
+      async function changeFile() {
+        await api('/api/deselect', {method: 'POST'});
+        setDatasets({packets: [], devices: [], triangulated: []}); setSelectedTriMac(null); setStatus(null); setScreen('picker'); loadBrowse();
+      }
+
+      function initialiseMap() {
+        if (mapRef.current || !window.maplibregl) return;
+        mapRef.current = new maplibregl.Map({
+          container: 'map',
+          style: BASEMAPS[basemap].style,
+          center: [0, 0], zoom: 2
+        });
+        mapRef.current.addControl(new maplibregl.NavigationControl(), 'top-right');
+        mapRef.current.on('load', () => setMapRedrawTick(tick => tick + 1));
+        mapRef.current.on('style.load', () => setMapRedrawTick(tick => tick + 1));
+      }
+
+      function visiblePackets() {
+        if (!playing && cursor === (range && range.start_ts)) return datasets.packets;
+        const end = cursor || to || (range && range.end_ts);
+        const start = mode === 'sliding' ? end - windowSec : (from || (range && range.start_ts));
+        return datasets.packets.filter(p => p.ts_sec >= start && p.ts_sec <= end);
+      }
+
+      function renderMapData() {
+        const map = mapRef.current;
+        if (!map || !map.isStyleLoaded()) return;
+        const packets = visiblePackets();
+        const packetFeatures = packets.map(p => ({type: 'Feature', geometry: {type: 'Point', coordinates: [p.lon, p.lat]}, properties: p}));
+        const deviceFeatures = datasets.devices.map(d => ({type: 'Feature', geometry: {type: 'Point', coordinates: [d.avg_lon, d.avg_lat]}, properties: d}));
+        const triSource = (playing || cursor !== (range && range.start_ts)) ? clientTriangulate(packets) : datasets.triangulated;
+        const triFeatures = triSource.map(t => ({type: 'Feature', geometry: {type: 'Point', coordinates: [t.est_lon, t.est_lat]}, properties: t}));
+        const triByMac = Object.fromEntries(triSource.map(t => [t.mac, t]));
+        const connectionFeatures = packets.filter(p => triByMac[p.mac]).map(p => ({type: 'Feature', geometry: {type: 'LineString', coordinates: [[p.lon, p.lat], [triByMac[p.mac].est_lon, triByMac[p.mac].est_lat]]}, properties: {mac: p.mac}}));
+        const selectedPacketFeatures = selectedTriMac ? packetFeatures.filter(f => f.properties.mac === selectedTriMac) : [];
+        const selectedConnectionFeatures = selectedTriMac ? connectionFeatures.filter(f => f.properties.mac === selectedTriMac) : [];
+        upsertSource('packets-src', packetFeatures); upsertSource('devices-src', deviceFeatures); upsertSource('tri-src', triFeatures); upsertSource('connections-src', connectionFeatures); upsertSource('selected-packets-src', selectedPacketFeatures); upsertSource('selected-connections-src', selectedConnectionFeatures);
+        upsertLayer('packets-heat', 'heatmap', 'packets-src', {visibility: layers.packets ? 'visible' : 'none'}, {'heatmap-weight': ['interpolate', ['linear'], ['get', 'signal'], -95, 0.1, -35, 1], 'heatmap-color': ['interpolate', ['linear'], ['heatmap-density'], 0, 'rgba(0,0,0,0)', .35, '#1dfff2', .7, '#ffc857', 1, '#ff2bd6'], 'heatmap-radius': 22});
+        upsertLayer('connections-line', 'line', 'connections-src', {visibility: layers.packets && layers.triangulated ? 'visible' : 'none'}, {'line-color': '#1dfff2', 'line-opacity': 0.16, 'line-width': 1});
+        upsertLayer('devices-point', 'circle', 'devices-src', {visibility: layers.devices ? 'visible' : 'none'}, {'circle-radius': 7, 'circle-color': '#1dfff2', 'circle-stroke-color': '#05060a', 'circle-stroke-width': 2});
+        upsertLayer('selected-connections-line', 'line', 'selected-connections-src', {visibility: selectedTriMac && layers.packets && layers.triangulated ? 'visible' : 'none'}, {'line-color': '#ff2bd6', 'line-opacity': 0.82, 'line-width': 3});
+        upsertLayer('selected-packets-point', 'circle', 'selected-packets-src', {visibility: selectedTriMac && layers.packets && layers.triangulated ? 'visible' : 'none'}, {'circle-radius': 6, 'circle-color': ['case', ['>', ['get', 'signal'], -55], '#1dfff2', ['>', ['get', 'signal'], -72], '#ffc857', '#ff2bd6'], 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 2});
+        upsertLayer('tri-point', 'circle', 'tri-src', {visibility: layers.triangulated ? 'visible' : 'none'}, {'circle-radius': 11, 'circle-color': ['match', ['get', 'confidence'], 'high', '#2cff8d', 'medium', '#ffc857', '#ff4d6d'], 'circle-stroke-color': '#fff', 'circle-stroke-width': 2});
+        if (!initialFitRef.current) fitToFeatures([...packetFeatures, ...deviceFeatures, ...triFeatures]);
+      }
+
+      function upsertSource(id, features) {
+        const data = {type: 'FeatureCollection', features};
+        const source = mapRef.current.getSource(id);
+        if (source) source.setData(data); else mapRef.current.addSource(id, {type: 'geojson', data});
+      }
+      function upsertLayer(id, type, source, layout, paint) {
+        if (mapRef.current.getLayer(id)) { mapRef.current.setLayoutProperty(id, 'visibility', layout.visibility); return; }
+        mapRef.current.addLayer({id, type, source, layout, paint});
+        if (id === 'tri-point') mapRef.current.on('click', id, e => {
+          const p = e.features[0].properties;
+          setSelectedTriMac(p.mac);
+          new maplibregl.Popup().setLngLat(e.lngLat).setHTML(`<strong>${p.mac}</strong><br>SSID: ${p.ssid || ''}<br>Confidence: ${p.confidence}<br>Observations: ${p.observation_count}<br>Signal: ${p.signal_range_dbm || ''}`).addTo(mapRef.current);
+        });
+      }
+      function fitToFeatures(features) {
+        if (!features.length) return;
+        const bounds = new maplibregl.LngLatBounds();
+        features.forEach(f => bounds.extend(f.geometry.coordinates));
+        mapRef.current.fitBounds(bounds, {padding: 70, maxZoom: 15}); initialFitRef.current = true;
+      }
+
+      function clientTriangulate(packets) {
+        const grouped = packets.reduce((acc, p) => ((acc[p.mac] ||= []).push(p), acc), {});
+        return Object.entries(grouped).map(([mac, obs]) => {
+          const minSignal = Math.min(...obs.map(o => o.signal));
+          const weights = obs.map(o => o.signal - minSignal + 1);
+          const sum = weights.reduce((a, b) => a + b, 0) || obs.length;
+          const est_lat = obs.reduce((a, o, i) => a + o.lat * weights[i], 0) / sum;
+          const est_lon = obs.reduce((a, o, i) => a + o.lon * weights[i], 0) / sum;
+          const count = obs.length;
+          return {mac, ssid: '', type: 'Unknown', est_lat, est_lon, confidence: count < 3 ? 'low' : count > 10 ? 'high' : 'medium', observation_count: count, signal_range_dbm: [Math.min(...obs.map(o => o.signal)), Math.max(...obs.map(o => o.signal))], avg_signal: obs.reduce((a, o) => a + o.signal, 0) / count};
+        });
+      }
+
+      if (screen === 'picker') return React.createElement('main', {className: 'picker'},
+        React.createElement('div', {className: 'brand'}, React.createElement('div', null, React.createElement('h1', null, 'void_map'), React.createElement('p', {className: 'tagline'}, 'Cyberpunk RF signal visualiser for Kismet .kismetdb files')), React.createElement('span', {className: 'muted'}, 'local only / read-only')),
+        browse && React.createElement('div', {className: 'breadcrumb'}, pathSegments(browse.current_path).map(seg => React.createElement('button', {key: seg.path, onClick: () => loadBrowse(seg.path)}, seg.label))),
+        browse && React.createElement('button', {disabled: !browse.parent_path, onClick: () => loadBrowse(browse.parent_path)}, '↑ Parent directory'),
+        loading && React.createElement('div', {className: 'spinner'}, 'Loading...'), error && React.createElement('p', {className: 'error'}, error),
+        gpsWarning && React.createElement('div', {className: 'warning'}, gpsWarning.message, React.createElement('div', {style: {marginTop: '10px', display: 'flex', gap: '8px'}}, React.createElement('button', {onClick: openMap}, 'Load anyway'), React.createElement('button', {onClick: () => setGpsWarning(null)}, 'Choose a different file'))),
+        browse && React.createElement('div', {className: 'list'}, browse.entries.length ? browse.entries.map(entry => React.createElement('button', {className: 'row', key: entry.path, onClick: () => entry.type === 'directory' ? loadBrowse(entry.path) : chooseFile(entry.path)}, React.createElement('span', {className: 'icon'}, entry.type === 'directory' ? '▣' : '◉'), React.createElement('span', null, React.createElement('strong', null, entry.name), React.createElement('div', {className: 'muted'}, entry.modified)), React.createElement('span', {className: 'muted'}, selecting === entry.path ? 'Loading...' : entry.type === 'file' ? `${entry.size_mb} MB` : 'folder'))) : React.createElement('p', {className: 'muted'}, 'No .kismetdb files found here. Navigate to the folder where Kismet saves its logs.'))
+      );
+
+      return React.createElement('div', {className: 'map-layout'},
+        React.createElement('div', {className: 'topbar'}, React.createElement('strong', null, 'void_map'), React.createElement('span', null, status && status.filename), React.createElement('span', {className: 'muted'}, status && `${status.device_count} devices / ${status.packet_count} packets`), React.createElement('span', {className: 'spacer'}), React.createElement('select', {value: basemap, onChange: e => setBasemap(e.target.value), title: 'Map layer'}, Object.entries(BASEMAPS).map(([key, value]) => React.createElement('option', {key, value: key}, value.label))), ['packets','devices','triangulated'].map(k => React.createElement('button', {key: k, className: layers[k] ? 'active' : '', onClick: () => setLayers({...layers, [k]: !layers[k]})}, k === 'packets' ? 'Raw Packets' : k === 'devices' ? 'Device Positions' : 'Triangulated')), React.createElement('button', {onClick: changeFile}, '✕ Change file')),
+        React.createElement('div', {className: 'controls'}, ['last10m','last30m','last1h','last6h','all'].map(p => React.createElement('button', {disabled: playing, className: preset === p ? 'active' : '', onClick: () => {setPreset(p); loadData(from, to, p);}}, p === 'all' ? 'All' : p.replace('last', 'Last '))), range && React.createElement('input', {disabled: playing, className: 'range', type: 'range', min: range.start_ts || 0, max: range.end_ts || 0, value: from || 0, onChange: e => setFrom(Number(e.target.value))}), range && React.createElement('input', {disabled: playing, className: 'range', type: 'range', min: range.start_ts || 0, max: range.end_ts || 0, value: to || 0, onChange: e => setTo(Number(e.target.value))}), React.createElement('span', null, `${fmtTime(from)} → ${fmtTime(to)}`), React.createElement('button', {disabled: playing, onClick: () => loadData(from, to, 'all')}, 'Apply')),
+        React.createElement('div', {className: 'replay'}, React.createElement('button', {onClick: () => setPlaying(!playing)}, playing ? '⏸' : '▶'), React.createElement('button', {onClick: () => {setPlaying(false); setCursor(from || (range && range.start_ts));}}, '⏹'), React.createElement('select', {value: speed, onChange: e => setSpeed(Number(e.target.value))}, [0.5,1,2,5,10].map(s => React.createElement('option', {key: s, value: s}, `${s}x`))), React.createElement('button', {className: mode === 'cumulative' ? 'active' : '', onClick: () => setMode('cumulative')}, 'Cumulative'), React.createElement('button', {className: mode === 'sliding' ? 'active' : '', onClick: () => setMode('sliding')}, 'Sliding Window'), mode === 'sliding' && React.createElement('select', {value: windowSec, onChange: e => setWindowSec(Number(e.target.value))}, [[60,'1m'],[300,'5m'],[600,'10m'],[1800,'30m']].map(([v,l]) => React.createElement('option', {key: v, value: v}, l))), range && React.createElement('input', {className: 'range', type: 'range', min: from || range.start_ts || 0, max: to || range.end_ts || 0, value: cursor || from || 0, onChange: e => setCursor(Number(e.target.value))}), React.createElement('span', null, fmtTime(cursor))),
+        React.createElement('div', {className: 'map-wrap'}, React.createElement('div', {id: 'map'}), (loading || error) && React.createElement('div', {className: 'overlay'}, loading ? 'Loading...' : error), React.createElement('div', {className: 'overlay', style: {right: '14px', left: 'auto', top: '14px', bottom: 'auto'}}, window.KeplerGl ? 'Kepler.gl CDN loaded; MapLibre renderer active.' : 'Map renderer active. Kepler.gl CDN unavailable.'))
+      );
+    }
+
+    function pathSegments(path) {
+      const parts = path.split('/').filter(Boolean);
+      const segs = [{label: '/', path: '/'}];
+      let current = '';
+      parts.forEach(part => { current += '/' + part; segs.push({label: part, path: current}); });
+      return segs;
+    }
+    ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
+  </script>
+</body>
+</html>
